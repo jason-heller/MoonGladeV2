@@ -2,6 +2,7 @@ package engine.io;
 
 import java.nio.DoubleBuffer;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 
 import org.lwjgl.BufferUtils;
@@ -11,7 +12,7 @@ import org.lwjgl.glfw.GLFWMouseButtonCallback;
 import org.lwjgl.glfw.GLFWScrollCallback;
 
 public class Input {
-	private static boolean[] inputs = new boolean[GLFW.GLFW_KEY_LAST + GLFW.GLFW_MOUSE_BUTTON_LAST + 3];
+	private static int[] inputs = new int[GLFW.GLFW_KEY_LAST + GLFW.GLFW_MOUSE_BUTTON_LAST + 3];
 	// The + 3 is for mouse wheel up and mouse wheel down (and +1 for last key), to be impemented
 	
 	private static Map<Keybinds, KeyPair> keybinds = new HashMap<>();
@@ -20,20 +21,24 @@ public class Input {
 	private static double mouseDeltaX, mouseDeltaY;
 	private static double scrollX, scrollY;
 
+	private static final byte NOT_PRESSED = 0, PRESSED = 1, HELD = 2;
+	
 	private GLFWKeyCallback keyboard;
 	private GLFWMouseButtonCallback mouseButtons;
 	private GLFWScrollCallback mouseScroll;
+	private static HashSet<Integer> pressedKeys = new HashSet<>();
 
 	public Input(long handle) {
 		keyboard = new GLFWKeyCallback() {
 			public void invoke(long window, int key, int scancode, int action, int mods) {
-				inputs[key] = (action != GLFW.GLFW_RELEASE);
+				parseAction(key, action);
 			}
 		};
 
 		mouseButtons = new GLFWMouseButtonCallback() {
 			public void invoke(long window, int button, int action, int mods) {
-				inputs[GLFW.GLFW_KEY_LAST + button] = (action != GLFW.GLFW_RELEASE);
+				int key = GLFW.GLFW_KEY_LAST + button;
+				parseAction(key, action);
 			}
 		};
 
@@ -43,9 +48,9 @@ public class Input {
 				scrollY += offsety;
 				
 				if (offsety > 0) {
-					inputs[Keybinds.SCROLL_UP] = true;
+					inputs[Keybinds.SCROLL_UP] = HELD;
 				} else if (offsety < 0) {
-					inputs[Keybinds.SCROLL_DOWN] = true;
+					inputs[Keybinds.SCROLL_DOWN] = HELD;
 				}
 			}
 		};
@@ -55,6 +60,16 @@ public class Input {
 		GLFW.glfwSetScrollCallback(handle, mouseScroll);
 		
 		resetBinds();
+	}
+	
+	private void parseAction(int key, int action) {
+		if (action == GLFW.GLFW_RELEASE) {
+			inputs[key] = NOT_PRESSED;
+			return;
+		}
+		
+		if (inputs[key] == NOT_PRESSED)
+			inputs[key] = PRESSED;
 	}
 	
 	/** Sets the main key for the bind. 
@@ -97,7 +112,24 @@ public class Input {
 	}
 
 	public static boolean isDown(Keybinds bind) {
-		return inputs[keybinds.get(bind).key] | inputs[keybinds.get(bind).alt];
+		return inputs[keybinds.get(bind).key] != NOT_PRESSED | inputs[keybinds.get(bind).alt] != NOT_PRESSED;
+	}
+	
+	public static boolean isDown(int glfwKey) {
+		return inputs[glfwKey] != NOT_PRESSED;
+	}
+	
+	public static boolean isPressed(Keybinds bind) {
+		boolean pressed = inputs[keybinds.get(bind).key] == PRESSED | inputs[keybinds.get(bind).alt] == PRESSED;
+		
+		if (pressed) {
+			KeyPair kp = keybinds.get(bind);
+			pressedKeys.add(kp.key);
+			//if (kp.alt != 0)
+			//	pressedKeys.add(kp.alt);
+		}
+		
+		return pressed;
 	}
 	
 	public void update(long window, double centerX, double centerY) {
@@ -110,8 +142,12 @@ public class Input {
 		
 		mouseDeltaX = mouseX - centerX;
 		mouseDeltaY = mouseY - centerY;
+		
+		for(int i : pressedKeys)
+			inputs[i] = HELD;
+		pressedKeys.clear();
 
-		inputs[Keybinds.SCROLL_UP] = inputs[Keybinds.SCROLL_DOWN] = false;
+		inputs[Keybinds.SCROLL_UP] = inputs[Keybinds.SCROLL_DOWN] = 0;
 	}
 
 	public void destroy() {
@@ -144,7 +180,18 @@ public class Input {
 	public static double getScrollY() {
 		return scrollY;
 	}
-	
+
+	/**
+	 * Returns the array holding each key input state. It is better to reference
+	 * this thought isDown() or isPressed(). This should be reseved for behind the
+	 * scenes engine routines
+	 * 
+	 * @return The array of input states
+	 */
+	public static int[] getInputs() {
+		return inputs;
+	}
+
 }
 
 class KeyPair {

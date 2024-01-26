@@ -1,0 +1,67 @@
+{
+	"biomes" : {
+		"Pine Forest" : {
+			"temperature" : "MILD",
+			"humidity" : "moderate",
+			"topography" : "hilly",
+			"ecology" : "forest",
+			"foliage_color" : "#3d9c38",
+			"manager" : "Generic",
+			"occurance" : "50"
+		},
+		"Snowy Pine Forest" : {
+			"temperature" : "cold",
+			"humidity" : "wet",
+			"topography" : "hilly",
+			"ecology" : "STEPPE",
+			"foliage_color" : "#e3e8e7",
+			"manager" : "Generic",
+			"occurance" : "50"
+		},
+		"Marsh" : {
+			"temperature" : "Temperate",
+			"humidity" : "wet",
+			"topography" : "badlands",
+			"ecology" : "marsh",
+			"foliage_color" : "#615c54",
+			"manager" : "Generic",
+			"occurance" : "50"
+		},
+		"Mesa" : {
+			"temperature" : "hot",
+			"humidity" : "dry",
+			"topography" : "mesa",
+			"ecology" : "desert",
+			"foliage_color" : "#bf5524",
+			"manager" : "Generic",
+			"occurance" : "50"
+		},
+		"Badlands" : {
+			"temperature" : "hot",
+			"humidity" : "dry",
+			"topography" : "badlands",
+			"ecology" : "desert",
+			"foliage_color" : "#bf5524",
+			"manager" : "Generic",
+			"occurance" : "50"
+		},
+		"Desert" : {
+			"temperature" : "hot",
+			"humidity" : "dry",
+			"topography" : "badlands",
+			"ecology" : "desert",
+			"foliage_color" : "#ebe6c7",
+			"manager" : "Generic",
+			"occurance" : "50"
+		},
+		"Taiga" : {
+			"temperature" : "cold",
+			"humidity" : "wet",
+			"topography" : "hilly",
+			"ecology" : "taiga",
+			"foliage_color" : "#97aa61",
+			"manager" : "Generic",
+			"occurance" : "50"
+		}
+	}
+}

@@ -44,7 +44,7 @@ public class MatrixUtils {
 		final Matrix4f inverse = new Matrix4f();
 		matrix.invert(inverse);
 
-		return new Vector3f(inverse.m20(), inverse.m21(), inverse.m22());
+		return new Vector3f(inverse.m20(), inverse.m21(), inverse.m22()).negate();
 	}
 
 	public static void setViewMatrix(Matrix4f matrix, Vector3f position, float yaw, float pitch) {

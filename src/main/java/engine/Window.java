@@ -1,24 +1,6 @@
 package engine;
 
-import static org.lwjgl.glfw.GLFW.GLFW_CONTEXT_VERSION_MAJOR;
-import static org.lwjgl.glfw.GLFW.GLFW_CONTEXT_VERSION_MINOR;
-import static org.lwjgl.glfw.GLFW.GLFW_OPENGL_CORE_PROFILE;
-import static org.lwjgl.glfw.GLFW.GLFW_OPENGL_FORWARD_COMPAT;
-import static org.lwjgl.glfw.GLFW.GLFW_OPENGL_PROFILE;
-import static org.lwjgl.glfw.GLFW.GLFW_RESIZABLE;
-import static org.lwjgl.glfw.GLFW.GLFW_VISIBLE;
-import static org.lwjgl.glfw.GLFW.glfwCreateWindow;
-import static org.lwjgl.glfw.GLFW.glfwDefaultWindowHints;
-import static org.lwjgl.glfw.GLFW.glfwDestroyWindow;
-import static org.lwjgl.glfw.GLFW.glfwGetPrimaryMonitor;
-import static org.lwjgl.glfw.GLFW.glfwGetVideoMode;
-import static org.lwjgl.glfw.GLFW.glfwMakeContextCurrent;
-import static org.lwjgl.glfw.GLFW.glfwSetWindowPos;
-import static org.lwjgl.glfw.GLFW.glfwShowWindow;
-import static org.lwjgl.glfw.GLFW.glfwSwapBuffers;
-import static org.lwjgl.glfw.GLFW.glfwSwapInterval;
-import static org.lwjgl.glfw.GLFW.glfwWindowHint;
-import static org.lwjgl.glfw.GLFW.glfwWindowShouldClose;
+import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.opengl.GL11.GL_FALSE;
 import static org.lwjgl.opengl.GL11.GL_TRUE;
 import static org.lwjgl.system.MemoryUtil.NULL;
@@ -26,43 +8,58 @@ import static org.lwjgl.system.MemoryUtil.NULL;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWVidMode;
 
+import engine.dev.console.DeveloperConsole;
+import engine.gl.ICamera;
 import engine.io.Input;
 import engine.io.Keybinds;
 import engine.utils.Sync;
 
 public class Window {
 
-	private long handle;
-	private int width, height;
+	private static long handle;
+	public static int width, height;
 	
-	private int targetFramerate = 120;
-	private int fps = 0, frameCounter = 0;
+	public static float deltaTime;
+	public static float timeScale = 1f;
+	
+	private static int targetFramerate = 120;
+	private int frameCounter = 0;
 	private long lastFrameQueryTime, frameQueryTime;
 	
-    private Input input;
+	public static int fps = 0;
+	private static boolean isFocused = true;
+	
+    private static Input input;
+    private static boolean shouldClose = false;
     
     private Sync sync;
+	private long lastFrameTime;
 	
-	public Window(String title, int width, int height) {
+	public Window(String title, int w, int h) {
 		
-		this.width = width;
-		this.height = height;
+		width = w;
+		height = h;
 		
 		sync = new Sync();
 
-		glfwDefaultWindowHints(); // optional, the current window hints are already the default
-		glfwWindowHint(GLFW_VISIBLE, GL_FALSE); // the window will stay hidden after creation
-		glfwWindowHint(GLFW_RESIZABLE, GL_TRUE); // the window will be resizable
-		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+		glfwDefaultWindowHints();
+		glfwWindowHint(GLFW_VISIBLE, GL_FALSE);
+		glfwWindowHint(GLFW_RESIZABLE, GL_TRUE);
+		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 4);		// 4.4 Released in 2013, Should be fine now
 		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 		glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-
+		//glfwWindowHint(GLFW_FOCUS_ON_SHOW, GL_FALSE);
+		
 		handle = glfwCreateWindow(width, height, title, NULL, NULL);
     
 		if ( handle == NULL )
 			throw new RuntimeException("Failed to create the GLFW window");
 	
+		glfwSetWindowFocusCallback(handle, (long handle, boolean glfwIsFocused)->{
+			isFocused = glfwIsFocused;
+		});
+		
 		// Get the resolution of the primary monitor
 		GLFWVidMode vidmode = glfwGetVideoMode(glfwGetPrimaryMonitor());
 		
@@ -79,56 +76,71 @@ public class Window {
 
 		input = new Input(handle);
 		
-		frameQueryTime = lastFrameQueryTime = System.currentTimeMillis();
+		lastFrameTime = System.currentTimeMillis();
+		frameQueryTime = lastFrameQueryTime = lastFrameTime;
 	}
 	
-	public int getWidth() {
+	public static int getWidth() {
 		return width;
 	}
 
-	public int getHeight() {
+	public static int getHeight() {
 		return height;
 	}
 	
-	public void close() {
-		glfwDestroyWindow(handle);
+	public static <T> void close() {
+		shouldClose = true;
+	}
+	
+	public static void destroy() {
 		input.destroy();
+		GLFW.glfwDestroyWindow(handle);
 	}
 
-	public boolean shouldClose() {
-		return glfwWindowShouldClose(handle);
+	public static boolean shouldClose() {
+		return shouldClose || glfwWindowShouldClose(handle);
 	}
 
-	public void update() {
+	public void update(ICamera c) {
 		glfwSwapBuffers(handle);
 		
 		// Putting this here ties the mouse delta rates to the window update rate, may want to decouple
 		int centerX = width / 2, centerY = height / 2;
 		
-		if (!Input.isDown(Keybinds.CROUCH)) {
-			input.update(handle, centerX, centerY);
+		input.update(handle, centerX, centerY);
+		if (!DeveloperConsole.isVisible())
 			GLFW.glfwSetCursorPos(handle, centerX, centerY);
-		} else {
-
-			input.update(handle, Input.getMouseX(), Input.getMouseY());
+		
+		if (Input.isDown(Keybinds.ESCAPE)) {
+			close();
+			return;
 		}
 		
 		frameCounter++;
 		
 		frameQueryTime = System.currentTimeMillis();
+		deltaTime = (frameQueryTime - lastFrameTime) / 1000f * timeScale;
+		lastFrameTime = frameQueryTime;
 		
 		if (frameQueryTime >= lastFrameQueryTime + 1000) {
 			lastFrameQueryTime = frameQueryTime;
 			
 			fps = frameCounter;
 			frameCounter = 0;
-			GLFW.glfwSetWindowTitle(handle, "fps: " + fps);	// TODO: remove me
 		}
 		
 		sync.sync(targetFramerate);
 	}
+	
+	public static void setTargetFramerate(int target) {
+		targetFramerate = target;
+	}
+	
+	public static boolean isFocused() {
+		return isFocused;
+	}
 
-	public float getAspectRatio() {
+	public static float getAspectRatio() {
 		return width / (float)height;
 	}
 }
